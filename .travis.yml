@@ -1,0 +1,11 @@
+language: python
+python:
+  - "3.6"
+  - "3.7"
+  - "3.8"
+install:
+  - pip install codecov
+  - pip install -r requirements-dev.txt
+script: make travis
+after_success:
+  - codecov
