@@ -22,6 +22,7 @@ class HeifImageFile(ImageFile.ImageFile):
 
         # size in pixels (width, height)
         self._size = heif_file.size
+        self.size = self._size
 
         # mode setting
         self.mode = heif_file.mode
