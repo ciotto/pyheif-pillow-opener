@@ -81,8 +81,7 @@ def check_heif_magic(data):
     return magic1 == b'ftyp' or magic2 in code_list
 
 
-def register_heif_opener():
-    Image.register_open(HeifImageFile.format, HeifImageFile, check_heif_magic)
-    Image.register_decoder('heif', HeifDecoder)
-    Image.register_extensions(HeifImageFile.format, ['.heic', '.heif'])
-    Image.register_mime(HeifImageFile.format, 'image/heif')
+Image.register_open(HeifImageFile.format, HeifImageFile, check_heif_magic)
+Image.register_decoder('heif', HeifDecoder)
+Image.register_extensions(HeifImageFile.format, ['.heic', '.heif'])
+Image.register_mime(HeifImageFile.format, 'image/heif')
