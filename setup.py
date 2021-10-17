@@ -15,7 +15,7 @@ setup(
     name=package_name,
     py_modules=['HeifImagePlugin'],
     version=__version__,
-    description='Simple HEIF/HEIC plugin for Pillow base on pyhief library.',
+    description='Simple HEIF/HEIC images plugin for Pillow base on pyhief library.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     author='Alexander Karpinsky',
