@@ -17,13 +17,9 @@ class HeifImageFile(ImageFile.ImageFile):
             self.fp.close()
             self.fp = None
 
-        # size in pixels (width, height)
+        self.mode = heif_file.mode
         self._size = heif_file.size
 
-        # mode setting
-        self.mode = heif_file.mode
-
-        # Add Exif
         if heif_file.metadata:
             for data in heif_file.metadata:
                 if data['type'] == 'Exif':
@@ -31,7 +27,7 @@ class HeifImageFile(ImageFile.ImageFile):
                     break
 
         self.tile = []
-        self.im = Image.core.new(self.mode, self.size)
+        self.load_prepare()
         self.frombytes(heif_file.data)
 
 
