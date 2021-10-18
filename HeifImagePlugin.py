@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import pyheif
 from PIL import Image, ImageFile
 from pyheif.error import HeifError
@@ -9,16 +8,14 @@ class HeifImageFile(ImageFile.ImageFile):
     format_description = "HEIF/HEIC image"
 
     def _open(self):
-        data = self.fp.read(16)
-
-        if not check_heif_magic(data):
-            raise SyntaxError('not a HEIF file')
-
-        self.fp.seek(0)
         try:
             heif_file = pyheif.read(self.fp)
         except HeifError as e:
             raise SyntaxError(str(e))
+
+        if self._exclusive_fp:
+            self.fp.close()
+            self.fp = None
 
         # size in pixels (width, height)
         self._size = heif_file.size
@@ -33,21 +30,9 @@ class HeifImageFile(ImageFile.ImageFile):
                     self.info['exif'] = data['data']
                     break
 
-        offset = self.fp.tell()
-        self.tile = [
-            ('heif', (0, 0) + self.size, offset, (heif_file,))
-        ]
-
-
-class HeifDecoder(ImageFile.PyDecoder):
-    _pulls_fd = True
-
-    def decode(self, buffer):
-        heif_file = self.args[0]
-        mode = heif_file.mode
-        raw_decoder = Image._getdecoder(mode, 'raw', (mode, heif_file.stride))
-        raw_decoder.setimage(self.im)
-        return raw_decoder.decode(heif_file.data)
+        self.tile = []
+        self.im = Image.core.new(self.mode, self.size)
+        self.frombytes(heif_file.data)
 
 
 def check_heif_magic(data):
@@ -82,6 +67,5 @@ def check_heif_magic(data):
 
 
 Image.register_open(HeifImageFile.format, HeifImageFile, check_heif_magic)
-Image.register_decoder('heif', HeifDecoder)
 Image.register_extensions(HeifImageFile.format, ['.heic', '.heif'])
 Image.register_mime(HeifImageFile.format, 'image/heif')
