@@ -28,7 +28,7 @@ class HeifImageFile(ImageFile.ImageFile):
 
         self.tile = []
         self.load_prepare()
-        self.frombytes(heif_file.data)
+        self.frombytes(heif_file.data, "raw", (self.mode, heif_file.stride))
 
 
 # https://github.com/strukturag/libheif/issues/83
