@@ -35,35 +35,30 @@ class HeifImageFile(ImageFile.ImageFile):
         self.frombytes(heif_file.data)
 
 
+# https://github.com/strukturag/libheif/issues/83
+# https://github.com/GNOME/gimp/commit/e4bff4c8016f18195f9a6229f59cbf41740ddb8d
+# 'heic': the usual HEIF images
+# 'heix': 10bit images, or anything that uses h265 with range extension
+# 'hevc', 'hevx': brands for image sequences
+# 'heim': multiview
+# 'heis': scalable
+# 'hevm': multiview sequence
+# 'hevs': scalable sequence
+# 'hevs': scalable sequence
+heif_codes = {
+    b'heic',
+    b'heix',
+    b'hevc',
+    b'hevx',
+    b'heim',
+    b'heis',
+    b'hevm',
+    b'hevs',
+    b'mif1',  # iPhone
+}
+
 def check_heif_magic(data):
-    magic1 = data[4:8]
-    magic2 = data[8:12]
-
-    # https://github.com/strukturag/libheif/issues/83
-    # https://github.com/GNOME/gimp/commit/e4bff4c8016f18195f9a6229f59cbf41740ddb8d
-    # 'heic': the usual HEIF images
-    # 'heix': 10bit images, or anything that uses h265 with range extension
-    # 'hevc', 'hevx': brands for image sequences
-    # 'heim': multiview
-    # 'heis': scalable
-    # 'hevm': multiview sequence
-    # 'hevs': scalable sequence
-    # 'hevs': scalable sequence
-    code_list = [
-        # Other
-        b'heic',
-        b'heix',
-        b'hevc',
-        b'hevx',
-        b'heim',
-        b'heis',
-        b'hevm',
-        b'hevs',
-        # iPhone
-        b'mif1',
-    ]
-
-    return magic1 == b'ftyp' or magic2 in code_list
+    return data[4:8] == b'ftyp' or data[8:12] in heif_codes
 
 
 Image.register_open(HeifImageFile.format, HeifImageFile, check_heif_magic)
