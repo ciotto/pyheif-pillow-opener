@@ -1,8 +1,9 @@
 import os.path
+from io import BytesIO
 from unittest import mock
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageCms
 from pyheif.error import HeifError
 
 from HeifImagePlugin import check_heif_magic
@@ -34,6 +35,16 @@ def test_open_image_exif_none():
     image = Image.open(os.path.join('tests', 'images', 'test2.heic'))
 
     assert 'exif' not in image.info
+
+
+def test_image_color_profile():
+    image = Image.open(os.path.join('tests', 'images', 'test3.heic'))
+
+    assert image.info['icc_profile'] is not None
+    icc_profile = BytesIO(image.info['icc_profile'])
+
+    # Try to parse
+    icc_profile = ImageCms.getOpenProfile(icc_profile)
 
 
 @mock.patch('pyheif.read', side_effect=HeifError(code=1, subcode=2, message='Error'))

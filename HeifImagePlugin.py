@@ -26,6 +26,18 @@ class HeifImageFile(ImageFile.ImageFile):
                     self.info['exif'] = data['data']
                     break
 
+        if heif_file.color_profile:
+            # rICC is Restricted ICC. Still not sure can it be used.
+            # ISO/IEC 23008-12 says: The colour information 'colr' descriptive
+            # item property has the same syntax as the ColourInformationBox
+            # as defined in ISO/IEC 14496-12.
+            # ISO/IEC 14496-12 says: Restricted profile shall be of either
+            # the Monochrome or Three‐Component Matrix‐Based class of
+            # input profiles, as defined by ISO 15076‐1.
+            # We need to go deeper...
+            if heif_file.color_profile['type'] in ('rICC', 'prof'):
+                self.info['icc_profile'] = heif_file.color_profile['data']
+
         self.tile = []
         self.load_prepare()
         self.frombytes(heif_file.data, "raw", (self.mode, heif_file.stride))
