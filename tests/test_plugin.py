@@ -1,4 +1,4 @@
-import os
+import os.path
 from unittest import mock
 
 import pytest
@@ -36,12 +36,6 @@ def test_open_image_exif_none():
     assert 'exif' not in image.info
 
 
-@mock.patch('HeifImagePlugin.check_heif_magic', return_value=False)
-def test_open_image_short(check_heif_magic_mock):
-    with pytest.raises(IOError):
-        Image.open(os.path.join('tests', 'images', 'test1.heic'))
-
-
 @mock.patch('pyheif.read', side_effect=HeifError(code=1, subcode=2, message='Error'))
 def test_open_image_error(read_mock):
     with pytest.raises(IOError):
@@ -53,6 +47,7 @@ def test_open_image_metadata(read_mock):
     m = mock.MagicMock()
     m.size = (10, 20)
     m.mode = 'RGB'
+    m.data = b'rgb' * 10 * 20
     m.metadata = [
         {'type': 'foo', 'data': 'bar'},
         {'type': 'bar', 'data': 'foo'},
