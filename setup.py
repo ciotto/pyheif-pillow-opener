@@ -24,7 +24,7 @@ setup(
     download_url='%s/%s/archive/v%s.tar.gz' % (github_url, package_name, __version__),
     keywords=['heif', 'heic', 'Pillow', 'plugin', 'pyhief'],
     install_requires=[
-        "pyheif>=0.5.1",
+        "pyheif>=0.6.0",
     ],
     classifiers=[
         'License :: OSI Approved :: MIT License',
