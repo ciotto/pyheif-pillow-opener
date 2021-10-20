@@ -44,6 +44,7 @@ This is not a big library but if you want to contribute is very easy!
 
 ### 0.2.0
 
+* No need to register, works after import.
 * Fill `info['icc_profile']` on loading.
 * Close and release file pointer after loading.
 * Deconding without custom HeifDecoder(ImageFile.PyDecoder).
