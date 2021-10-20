@@ -15,7 +15,7 @@ class HeifImageFile(ImageFile.ImageFile):
 
         if self._exclusive_fp:
             self.fp.close()
-            self.fp = None
+        self.fp = None
 
         self.mode = heif_file.mode
         self._size = heif_file.size
