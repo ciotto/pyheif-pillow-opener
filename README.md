@@ -38,3 +38,12 @@ This is not a big library but if you want to contribute is very easy!
  1. do your fixes or add new awesome features (with tests)
  1. run the tests `make test`
  1. commit in new branch and make a pull request
+
+
+## Changelog
+
+### 0.2.0
+
+* Fill `info['icc_profile']` on loading.
+* Close and release file pointer after loading.
+* Deconding without custom HeifDecoder(ImageFile.PyDecoder).
