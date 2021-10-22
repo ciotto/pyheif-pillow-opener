@@ -1,6 +1,33 @@
+from copy import copy
+
+import cffi
 import pyheif
 from PIL import Image, ImageFile
 from pyheif.error import HeifError
+
+
+ffi = FFI()
+
+
+def _crop_heif_file(heif):
+    # Zero-copy crop before loading. Just shifts data pointer and updates meta.
+    crop = heif.transformations['crop']
+    if crop == (0, 0) + heif.size:
+        return heif
+
+    if heif.mode not in ("L", "RGB", "RGBA"):
+        raise ValueError("Unknown mode")
+    pixel_size = len(heif.mode)
+    
+    offset = heif.stride * crop[1] + pixel_size * crop[0]
+    cdata = ffi.from_buffer(heif.data, require_writable=False) + offset
+    data = ffi.buffer(cdata, heif.stride * crop[3])
+    
+    new_heif = copy(heif)
+    new_heif.size = crop[2:4]
+    new_heif.transformations = dict(heif.transformations, crop=(0, 0) + crop[2:4])
+    new_heif.data = data
+    return new_heif
 
 
 class HeifImageFile(ImageFile.ImageFile):
@@ -9,13 +36,15 @@ class HeifImageFile(ImageFile.ImageFile):
 
     def _open(self):
         try:
-            heif_file = pyheif.read(self.fp)
+            heif_file = pyheif.read(self.fp, apply_transformations=False)
         except HeifError as e:
             raise SyntaxError(str(e))
 
         if self._exclusive_fp:
             self.fp.close()
         self.fp = None
+
+        heif_file = _crop_heif_file(heif_file)
 
         self.mode = heif_file.mode
         self._size = heif_file.size
