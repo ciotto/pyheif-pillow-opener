@@ -31,6 +31,16 @@ def _crop_heif_file(heif):
 
 
 def _rotate_heif_file(heif):
+    """
+    Heif files already contain transformation chunks imir and irot which are
+    dominate over Orientation tag in EXIF.
+
+    This is not aligned with other formats behaviour and we MUST fix EXIF after
+    loading to prevent unexpected rotation after resaving in other formats.
+
+    And we come up to there is no reasons to force rotation of HEIF images
+    after loading since we need update EXIF anyway.
+    """
     orientation = heif.transformations['orientation_tag']
     if not (1 <= orientation <= 8):
         return heif
