@@ -30,6 +30,32 @@ def _crop_heif_file(heif):
     return new_heif
 
 
+def _rotate_heif_file(heif):
+    orientation = heif.transformations['orientation_tag']
+    if not (1 <= orientation <= 8):
+        return heif
+
+    exif_id = None
+    for i, data in enumerate(heif.metadata or []):
+        if data['type'] == 'Exif':
+            exif_id = i
+            break
+
+    new_heif = copy(heif)
+    new_heif.metadata = (heif.metadata or []).copy()
+    new_heif.transformations = dict(heif.transformations, orientation_tag=0)
+
+    if exif_id is None:
+        exif = Image.Exif()
+        exif[0x0112] = orientation
+        new_heif.metadata.append({'type': 'Exif', 'data': exif.tobytes()})
+    else:
+        exif_data = heif.metadata[exif_id]['data']
+        # TODO: patch or amend exif
+        new_heif.metadata[exif_id] ={'type': 'Exif', 'data': exif_data}
+    return new_heif
+
+
 class HeifImageFile(ImageFile.ImageFile):
     format = 'HEIF'
     format_description = "HEIF/HEIC image"
@@ -45,6 +71,7 @@ class HeifImageFile(ImageFile.ImageFile):
         self.fp = None
 
         heif_file = _crop_heif_file(heif_file)
+        heif_file = _rotate_heif_file(heif_file)
 
         self.mode = heif_file.mode
         self._size = heif_file.size
