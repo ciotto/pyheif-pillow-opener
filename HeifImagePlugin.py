@@ -1,6 +1,6 @@
 from copy import copy
 
-import cffi
+from cffi import FFI
 import pyheif
 from PIL import Image, ImageFile
 from pyheif.error import HeifError
