@@ -63,6 +63,7 @@ def test_open_image_metadata(read_mock):
     m.size = (10, 20)
     m.mode = 'RGB'
     m.data = b'rgb' * 10 * 20
+    m.transformations = {'crop': (0, 0, 10, 20), 'orientation_tag': 0}
     m.metadata = [
         {'type': 'foo', 'data': 'bar'},
         {'type': 'bar', 'data': 'foo'},
@@ -94,3 +95,17 @@ def test_check_heif_magic(magic):
 
 def test_check_heif_magic_wrong():
     assert not check_heif_magic(b'    fty hei     ')
+
+@pytest.mark.parametrize('orientation', list(range(1, 9)))
+def test_orientation(orientation):
+    image = Image.open(res('orientation', f'Landscape_{orientation}.heic'))
+
+    # There should be exif in each image, even if Orientation is 0
+    assert 'exif' in image.info
+    exif = image.getexif()
+
+    # There should be Orientation tag for each image
+    assert 0x0112 in exif
+
+    # And this orientation should be the same as in filename
+    assert exif[0x0112] == orientation
