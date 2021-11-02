@@ -9,6 +9,10 @@ from pyheif.error import HeifError
 from HeifImagePlugin import check_heif_magic
 
 
+def res(*path):
+    return os.path.join('tests', 'images', *path)
+
+
 @pytest.mark.parametrize(
     ['image_name'],
     [
@@ -19,26 +23,26 @@ from HeifImagePlugin import check_heif_magic
     ]
 )
 def test_open_image(image_name):
-    image = Image.open(os.path.join('tests', 'images', 'test1.heic'))
+    image = Image.open(res(image_name))
     image.load()
 
     assert image is not None
 
 
 def test_open_image_exif():
-    image = Image.open(os.path.join('tests', 'images', 'test1.heic'))
+    image = Image.open(res('test1.heic'))
 
     assert image.info['exif'] is not None
 
 
 def test_open_image_exif_none():
-    image = Image.open(os.path.join('tests', 'images', 'test2.heic'))
+    image = Image.open(res('test2.heic'))
 
     assert 'exif' not in image.info
 
 
 def test_image_color_profile():
-    image = Image.open(os.path.join('tests', 'images', 'test3.heic'))
+    image = Image.open(res('test3.heic'))
 
     assert image.info['icc_profile'] is not None
     icc_profile = BytesIO(image.info['icc_profile'])
@@ -50,7 +54,7 @@ def test_image_color_profile():
 @mock.patch('pyheif.read', side_effect=HeifError(code=1, subcode=2, message='Error'))
 def test_open_image_error(read_mock):
     with pytest.raises(IOError):
-        Image.open(os.path.join('tests', 'images', 'test1.heic'))
+        Image.open(res('test1.heic'))
 
 
 @mock.patch('pyheif.read')
@@ -65,7 +69,7 @@ def test_open_image_metadata(read_mock):
     ]
     read_mock.return_value = m
 
-    image = Image.open(os.path.join('tests', 'images', 'test1.heic'))
+    image = Image.open(res('test1.heic'))
 
     assert image is not None
 
