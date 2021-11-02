@@ -1,16 +1,13 @@
-import os.path
 from io import BytesIO
 from unittest import mock
 
 import pytest
-from PIL import Image, ImageCms
+from PIL import Image, ImageCms, ImageOps
 from pyheif.error import HeifError
 
 from HeifImagePlugin import check_heif_magic
 
-
-def res(*path):
-    return os.path.join('tests', 'images', *path)
+from . import avg_diff, respath
 
 
 @pytest.mark.parametrize(
@@ -23,26 +20,26 @@ def res(*path):
     ]
 )
 def test_open_image(image_name):
-    image = Image.open(res(image_name))
+    image = Image.open(respath(image_name))
     image.load()
 
     assert image is not None
 
 
 def test_open_image_exif():
-    image = Image.open(res('test1.heic'))
+    image = Image.open(respath('test1.heic'))
 
     assert image.info['exif'] is not None
 
 
 def test_open_image_exif_none():
-    image = Image.open(res('test2.heic'))
+    image = Image.open(respath('test2.heic'))
 
     assert 'exif' not in image.info
 
 
 def test_image_color_profile():
-    image = Image.open(res('test3.heic'))
+    image = Image.open(respath('test3.heic'))
 
     assert image.info['icc_profile'] is not None
     icc_profile = BytesIO(image.info['icc_profile'])
@@ -54,7 +51,7 @@ def test_image_color_profile():
 @mock.patch('pyheif.read', side_effect=HeifError(code=1, subcode=2, message='Error'))
 def test_open_image_error(read_mock):
     with pytest.raises(IOError):
-        Image.open(res('test1.heic'))
+        Image.open(respath('test1.heic'))
 
 
 @mock.patch('pyheif.read')
@@ -70,7 +67,7 @@ def test_open_image_metadata(read_mock):
     ]
     read_mock.return_value = m
 
-    image = Image.open(res('test1.heic'))
+    image = Image.open(respath('test1.heic'))
 
     assert image is not None
 
@@ -96,16 +93,29 @@ def test_check_heif_magic(magic):
 def test_check_heif_magic_wrong():
     assert not check_heif_magic(b'    fty hei     ')
 
+
 @pytest.mark.parametrize('orientation', list(range(1, 9)))
-def test_orientation(orientation):
-    image = Image.open(res('orientation', f'Landscape_{orientation}.heic'))
+def test_orientation(orientation, orientation_ref_image):
+    image = Image.open(respath('orientation', f'Landscape_{orientation}.heic'))
 
     # There should be exif in each image, even if Orientation is 0
     assert 'exif' in image.info
-    exif = image.getexif()
 
     # There should be Orientation tag for each image
+    exif = image.getexif()
     assert 0x0112 in exif
 
     # And this orientation should be the same as in filename
     assert exif[0x0112] == orientation
+
+    # Transposed image shoud be Landscape
+    transposed = ImageOps.exif_transpose(image)
+    assert transposed.size == (600, 450)
+
+    # Image should change after transposition
+    if orientation != 1:
+        assert image != transposed
+
+    # The average diff between transposed and original image should be small
+    avg_diffs = avg_diff(transposed, orientation_ref_image, threshold=20)
+    assert max(avg_diffs) <= 0.02
