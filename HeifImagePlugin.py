@@ -1,7 +1,8 @@
 from copy import copy
 
-from cffi import FFI
+import piexif
 import pyheif
+from cffi import FFI
 from PIL import Image, ImageFile
 from pyheif.error import HeifError
 
@@ -56,13 +57,12 @@ def _rotate_heif_file(heif):
     new_heif.transformations = dict(heif.transformations, orientation_tag=0)
 
     if exif_id is None:
-        exif = Image.Exif()
-        exif[0x0112] = orientation
-        new_heif.metadata.append({'type': 'Exif', 'data': exif.tobytes()})
+        exif = {'0th': {piexif.ImageIFD.Orientation: orientation}}
+        new_heif.metadata.append({'type': 'Exif', 'data': piexif.dump(exif)})
     else:
-        exif_data = heif.metadata[exif_id]['data']
-        # TODO: patch or amend exif
-        new_heif.metadata[exif_id] ={'type': 'Exif', 'data': exif_data}
+        exif = piexif.load(heif.metadata[exif_id]['data'])
+        exif['0th'][piexif.ImageIFD.Orientation] = orientation
+        new_heif.metadata[exif_id] = {'type': 'Exif', 'data': piexif.dump(exif)}
     return new_heif
 
 
