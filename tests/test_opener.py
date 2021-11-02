@@ -21,7 +21,7 @@ register_heif_opener()
     ]
 )
 def test_open_image(image_name):
-    image = Image.open(os.path.join('tests', 'images', 'test1.heic'))
+    image = Image.open(os.path.join('tests', 'images', image_name))
     image.load()
 
     assert image is not None
