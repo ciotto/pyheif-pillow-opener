@@ -3,6 +3,7 @@ from unittest import mock
 
 import pytest
 from PIL import Image, ImageCms, ImageOps
+from pyheif import read as pyheif_read
 from pyheif.error import HeifError
 
 from HeifImagePlugin import check_heif_magic
@@ -23,8 +24,6 @@ def test_open_image(image_name):
     image = Image.open(respath(image_name))
     image.load()
 
-    assert image is not None
-
 
 def test_open_image_exif():
     image = Image.open(respath('test1.heic'))
@@ -42,9 +41,9 @@ def test_image_color_profile():
     image = Image.open(respath('test3.heic'))
 
     assert image.info['icc_profile'] is not None
-    icc_profile = BytesIO(image.info['icc_profile'])
 
     # Try to parse
+    icc_profile = BytesIO(image.info['icc_profile'])
     icc_profile = ImageCms.getOpenProfile(icc_profile)
 
 
@@ -119,3 +118,123 @@ def test_orientation(orientation, orientation_ref_image):
     # The average diff between transposed and original image should be small
     avg_diffs = avg_diff(transposed, orientation_ref_image, threshold=20)
     assert max(avg_diffs) <= 0.02
+
+
+@mock.patch('pyheif.read')
+def test_no_orientation_and_no_exif(read_mock):
+    def my_pyheif_read(*args, **kwargs):
+        heif_file = pyheif_read(*args, **kwargs)
+        heif_file.metadata = None
+        heif_file.transformations = {
+            'crop': (0, 0) + heif_file.size,
+            'orientation_tag': 0,
+        }
+        return heif_file
+
+    read_mock.side_effect = my_pyheif_read
+
+    image = Image.open(respath('test2.heic'))
+
+    assert read_mock.called
+    assert 'exif' not in image.info
+
+
+@mock.patch('pyheif.read')
+def test_orientation_and_no_exif(read_mock):
+    def my_pyheif_read(*args, **kwargs):
+        heif_file = pyheif_read(*args, **kwargs)
+        heif_file.metadata = None
+        heif_file.transformations = {
+            'crop': (0, 0) + heif_file.size,
+            'orientation_tag': 7,
+        }
+        return heif_file
+
+    read_mock.side_effect = my_pyheif_read
+
+    image = Image.open(respath('test2.heic'))
+
+    assert read_mock.called
+    assert 'exif' in image.info
+    assert 0x0112 in image.getexif()
+    assert image.getexif()[0x0112] == 7
+
+
+@mock.patch('pyheif.read')
+def test_no_orientation_and_exif_with_rotation(read_mock):
+    def my_pyheif_read(*args, **kwargs):
+        exif = Image.Exif()
+        exif[0x0112] = 7
+
+        heif_file = pyheif_read(*args, **kwargs)
+        heif_file.metadata = [
+            {'type': 'Exif', 'data': exif.tobytes()}
+        ]
+        heif_file.transformations = {
+            'crop': (0, 0) + heif_file.size,
+            'orientation_tag': 0,
+        }
+        return heif_file
+
+    read_mock.side_effect = my_pyheif_read
+
+    image = Image.open(respath('test2.heic'))
+
+    assert read_mock.called
+    assert 'exif' in image.info
+    assert 0x0112 in image.getexif()
+    assert image.getexif()[0x0112] == 7
+
+
+@mock.patch('pyheif.read')
+def test_orientation_and_exif_with_rotation(read_mock):
+    def my_pyheif_read(*args, **kwargs):
+        exif = Image.Exif()
+        exif[0x0112] = 7
+
+        heif_file = pyheif_read(*args, **kwargs)
+        heif_file.metadata = [
+            {'type': 'Exif', 'data': exif.tobytes()}
+        ]
+        heif_file.transformations = {
+            'crop': (0, 0) + heif_file.size,
+            # Orientation tag from file should suppress Exif value
+            'orientation_tag': 1,
+        }
+        return heif_file
+
+    read_mock.side_effect = my_pyheif_read
+
+    image = Image.open(respath('test2.heic'))
+
+    assert read_mock.called
+    assert 'exif' in image.info
+    assert 0x0112 in image.getexif()
+    assert image.getexif()[0x0112] == 1
+
+
+@mock.patch('pyheif.read')
+def test_orientation_and_exif_without_rotation(read_mock):
+    def my_pyheif_read(*args, **kwargs):
+        exif = Image.Exif()
+        exif[0x010e] = "Sample image"
+
+        heif_file = pyheif_read(*args, **kwargs)
+        heif_file.metadata = [
+            {'type': 'Exif', 'data': exif.tobytes()}
+        ]
+        heif_file.transformations = {
+            'crop': (0, 0) + heif_file.size,
+            # Orientation tag from file should suppress Exif value
+            'orientation_tag': 1,
+        }
+        return heif_file
+
+    read_mock.side_effect = my_pyheif_read
+
+    image = Image.open(respath('test2.heic'))
+
+    assert read_mock.called
+    assert 'exif' in image.info
+    assert 0x0112 in image.getexif()
+    assert image.getexif()[0x0112] == 1
