@@ -1,4 +1,5 @@
 from copy import copy
+from weakref import WeakKeyDictionary
 
 import piexif
 import pyheif
@@ -8,6 +9,7 @@ from pyheif.error import HeifError
 
 
 ffi = FFI()
+_keep_refs = WeakKeyDictionary()
 
 
 def _crop_heif_file(heif):
@@ -19,11 +21,16 @@ def _crop_heif_file(heif):
     if heif.mode not in ("L", "RGB", "RGBA"):
         raise ValueError("Unknown mode")
     pixel_size = len(heif.mode)
-    
+
     offset = heif.stride * crop[1] + pixel_size * crop[0]
     cdata = ffi.from_buffer(heif.data, require_writable=False) + offset
     data = ffi.buffer(cdata, heif.stride * crop[3])
-    
+
+    # Keep reference to the original data as long as "cdata + offset" is alive.
+    # Normally ffi.from_buffer should hold it for us but unfortunately
+    # cdata + offset creates a new cdata object without reference.
+    _keep_refs[cdata] = heif.data
+
     new_heif = copy(heif)
     new_heif.size = crop[2:4]
     new_heif.transformations = dict(heif.transformations, crop=(0, 0) + crop[2:4])

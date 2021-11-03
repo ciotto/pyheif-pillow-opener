@@ -178,3 +178,16 @@ def test_orientation_and_exif_without_rotation():
 
     assert 'exif' in image.info
     assert image.getexif()[274] == 1
+
+
+def test_crop_on_load():
+    ref_image = Image.open(respath('test2.heic'))
+    assert ref_image.size == (1280, 720)
+
+    image = open_with_custom_meta(respath('test2.heic'), crop=(0, 0, 512, 256))
+    assert image.size == (512, 256)
+    assert image.copy() == ref_image.crop((0, 0, 512, 256))
+
+    image = open_with_custom_meta(respath('test2.heic'), crop=(99, 33, 512, 256))
+    assert image.size == (512, 256)
+    assert image.copy() == ref_image.crop((99, 33, 611, 289))
