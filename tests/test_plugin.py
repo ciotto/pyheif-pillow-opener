@@ -51,14 +51,14 @@ def test_image_color_profile():
     icc_profile = ImageCms.getOpenProfile(icc_profile)
 
 
-@mock.patch('pyheif.read', side_effect=HeifError(code=1, subcode=2, message='Error'))
-def test_open_image_error(read_mock):
+@mock.patch('pyheif.open', side_effect=HeifError(code=1, subcode=2, message='Error'))
+def test_open_image_error(open_mock):
     with pytest.raises(IOError):
         Image.open(res('test1.heic'))
 
 
-@mock.patch('pyheif.read')
-def test_open_image_metadata(read_mock):
+@mock.patch('pyheif.open')
+def test_open_image_metadata(open_mock):
     m = mock.MagicMock()
     m.size = (10, 20)
     m.mode = 'RGB'
@@ -67,10 +67,11 @@ def test_open_image_metadata(read_mock):
         {'type': 'foo', 'data': 'bar'},
         {'type': 'bar', 'data': 'foo'},
     ]
-    read_mock.return_value = m
+    open_mock.return_value = m
 
     image = Image.open(res('test1.heic'))
 
+    assert open_mock.called
     assert image is not None
 
 
