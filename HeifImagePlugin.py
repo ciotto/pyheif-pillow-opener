@@ -9,7 +9,7 @@ class HeifImageFile(ImageFile.ImageFile):
 
     def _open(self):
         try:
-            heif_file = pyheif.read(self.fp)
+            heif_file = pyheif.open(self.fp)
         except HeifError as e:
             raise SyntaxError(str(e))
 
@@ -39,8 +39,18 @@ class HeifImageFile(ImageFile.ImageFile):
                 self.info['icc_profile'] = heif_file.color_profile['data']
 
         self.tile = []
-        self.load_prepare()
-        self.frombytes(heif_file.data, "raw", (self.mode, heif_file.stride))
+        self.heif_file = heif_file
+
+    def load(self):
+        if self.heif_file:
+            heif_file = self.heif_file.load()
+
+            self.load_prepare()
+            self.frombytes(heif_file.data, "raw", (self.mode, heif_file.stride))
+            self.heif_file.data = None
+            self.heif_file = None
+
+        return super().load()
 
 
 # https://github.com/strukturag/libheif/issues/83
