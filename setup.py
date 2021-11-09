@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-from setuptools import setup
 import os.path
+
+from setuptools import setup
+
 
 __version__ = '0.2.0'
 
@@ -25,6 +27,7 @@ setup(
     keywords=['heif', 'heic', 'Pillow', 'plugin', 'pyhief'],
     install_requires=[
         "pyheif>=0.5.1",
+        "piexif>=1.1.3",
     ],
     classifiers=[
         'License :: OSI Approved :: MIT License',
