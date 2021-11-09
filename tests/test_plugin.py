@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 from PIL import Image, ImageCms, ImageOps
-from pyheif import read as pyheif_read
+from pyheif import open as pyheif_open
 from pyheif.error import HeifError
 
 from HeifImagePlugin import check_heif_magic
@@ -122,8 +122,8 @@ def test_orientation(orientation, orientation_ref_image):
 
 
 def open_with_custom_meta(path, *, exif=None, crop=None, orientation=0):
-    def my_pyheif_read(*args, **kwargs):
-        heif = pyheif_read(*args, **kwargs)
+    def my_pyheif_open(*args, **kwargs):
+        heif = pyheif_open(*args, **kwargs)
         if exif is None:
             heif.metadata = None
         else:
@@ -136,10 +136,10 @@ def open_with_custom_meta(path, *, exif=None, crop=None, orientation=0):
         }
         return heif
 
-    with mock.patch('pyheif.read') as read_mock:
-        read_mock.side_effect = my_pyheif_read
+    with mock.patch('pyheif.open') as open_mock:
+        open_mock.side_effect = my_pyheif_open
         image = Image.open(path)
-        assert read_mock.called
+        assert open_mock.called
 
     return image
 
