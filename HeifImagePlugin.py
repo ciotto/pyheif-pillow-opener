@@ -79,7 +79,7 @@ class HeifImageFile(ImageFile.ImageFile):
 
     def _open(self):
         try:
-            heif_file = pyheif.read(self.fp, apply_transformations=False)
+            heif_file = pyheif.open(self.fp, apply_transformations=False)
         except HeifError as e:
             raise SyntaxError(str(e))
 
@@ -87,11 +87,10 @@ class HeifImageFile(ImageFile.ImageFile):
             self.fp.close()
         self.fp = None
 
-        heif_file = _crop_heif_file(heif_file)
         heif_file = _rotate_heif_file(heif_file)
 
         self.mode = heif_file.mode
-        self._size = heif_file.size
+        self._size = heif_file.transformations['crop'][2:4]
 
         if heif_file.metadata:
             for data in heif_file.metadata:
@@ -112,8 +111,19 @@ class HeifImageFile(ImageFile.ImageFile):
                 self.info['icc_profile'] = heif_file.color_profile['data']
 
         self.tile = []
-        self.load_prepare()
-        self.frombytes(heif_file.data, "raw", (self.mode, heif_file.stride))
+        self.heif_file = heif_file
+
+    def load(self):
+        if self.heif_file:
+            heif_file = self.heif_file.load()
+            heif_file = _crop_heif_file(heif_file)
+
+            self.load_prepare()
+            self.frombytes(heif_file.data, "raw", (self.mode, heif_file.stride))
+            self.heif_file.data = None
+            self.heif_file = None
+
+        return super().load()
 
 
 # https://github.com/strukturag/libheif/issues/83
