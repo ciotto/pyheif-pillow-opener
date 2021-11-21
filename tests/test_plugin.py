@@ -1,3 +1,4 @@
+from glob import glob
 from io import BytesIO
 from unittest import mock
 
@@ -14,9 +15,25 @@ from . import avg_diff, respath
     'image_name',
     ['test1.heic', 'test2.heic', 'test3.heic', 'test4.heif']
 )
-def test_load_image(image_name):
+def test_load_heic(image_name):
     image = Image.open(respath(image_name))
     image.load()
+
+
+@pytest.mark.parametrize(
+    'image_path',
+    list(glob(respath('avif-sample-images', '*.avif')))
+)
+def test_load_avif(image_path):
+    image = Image.open(image_path)
+    ref = Image.open(respath('avif-sample-images', 'fox.jpg'))
+
+    if '.monochrome.' in image_path:
+        image = image.convert('L')
+        ref = ref.convert('L')
+
+    avg_diffs = avg_diff(image, ref, threshold=20)
+    assert max(avg_diffs) <= 0.02
 
 
 def test_open_image_exif():
@@ -75,7 +92,7 @@ def test_check_heif_magic(magic):
 
 
 def test_check_heif_magic_wrong():
-    assert not check_heif_magic(b'    fty hei     ')
+    assert not check_heif_magic(b'    ftyphey!    ')
 
 
 @pytest.mark.parametrize('orientation', list(range(1, 9)))
