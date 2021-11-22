@@ -85,7 +85,10 @@ def test_open_image_metadata(open_mock):
 
 @pytest.mark.parametrize(
     'magic',
-    [b'heic', b'heix', b'hevc', b'hevx', b'heim', b'heis', b'hevm', b'hevs', b'mif1']
+    [
+        b'heic', b'heix', b'heim', b'heis', b'hevc', b'hevx',
+        b'hevm', b'hevs', b'mif1', b'msf1', b'avif', b'avis'
+    ]
 )
 def test_check_heif_magic(magic):
     assert check_heif_magic(b'    ftyp%b    ' % magic)
