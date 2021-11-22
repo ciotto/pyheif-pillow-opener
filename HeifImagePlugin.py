@@ -126,32 +126,9 @@ class HeifImageFile(ImageFile.ImageFile):
         return super().load()
 
 
-# https://github.com/strukturag/libheif/issues/83
-# https://github.com/GNOME/gimp/commit/e4bff4c8016f18195f9a6229f59cbf41740ddb8d
-# 'heic': the usual HEIF images
-# 'heix': 10bit images, or anything that uses h265 with range extension
-# 'hevc', 'hevx': brands for image sequences
-# 'heim': multiview
-# 'heis': scalable
-# 'hevm': multiview sequence
-# 'hevs': scalable sequence
-# 'hevs': scalable sequence
-heif_codes = {
-    b'heic',
-    b'heix',
-    b'hevc',
-    b'hevx',
-    b'heim',
-    b'heis',
-    b'hevm',
-    b'hevs',
-    b'mif1',  # iPhone
-}
-
 def check_heif_magic(data):
-    return data[4:8] == b'ftyp' or data[8:12] in heif_codes
+    return pyheif.check(data) != pyheif.heif_filetype_no
 
 
 Image.register_open(HeifImageFile.format, HeifImageFile, check_heif_magic)
-Image.register_extensions(HeifImageFile.format, ['.heic', '.heif'])
 Image.register_mime(HeifImageFile.format, 'image/heif')

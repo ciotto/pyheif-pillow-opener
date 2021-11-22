@@ -1,9 +1,9 @@
+from glob import glob
 from io import BytesIO
 from unittest import mock
 
 import pytest
 from PIL import Image, ImageCms, ImageOps
-from pyheif import open as pyheif_open
 from pyheif.error import HeifError
 
 from HeifImagePlugin import check_heif_magic
@@ -12,17 +12,28 @@ from . import avg_diff, respath
 
 
 @pytest.mark.parametrize(
-    ['image_name'],
-    [
-        ('test1.heic',),
-        ('test2.heic',),
-        ('test3.heic',),
-        ('test4.heif',),
-    ]
+    'image_name',
+    ['test1.heic', 'test2.heic', 'test3.heic', 'test4.heif']
 )
-def test_open_image(image_name):
+def test_load_heic(image_name):
     image = Image.open(respath(image_name))
     image.load()
+
+
+@pytest.mark.parametrize(
+    'image_path',
+    list(glob(respath('avif-sample-images', '*.avif')))
+)
+def test_load_avif(image_path):
+    image = Image.open(image_path)
+    ref = Image.open(respath('avif-sample-images', 'fox.jpg'))
+
+    if '.monochrome.' in image_path:
+        image = image.convert('L')
+        ref = ref.convert('L')
+
+    avg_diffs = avg_diff(image, ref, threshold=20)
+    assert max(avg_diffs) <= 0.02
 
 
 def test_open_image_exif():
@@ -73,17 +84,10 @@ def test_open_image_metadata(open_mock):
 
 
 @pytest.mark.parametrize(
-    ['magic'],
+    'magic',
     [
-        (b'heic',),
-        (b'heix',),
-        (b'hevc',),
-        (b'hevx',),
-        (b'heim',),
-        (b'heis',),
-        (b'hevm',),
-        (b'hevs',),
-        (b'mif1',),
+        b'heic', b'heix', b'heim', b'heis', b'hevc', b'hevx',
+        b'hevm', b'hevs', b'mif1', b'msf1', b'avif', b'avis'
     ]
 )
 def test_check_heif_magic(magic):
@@ -91,7 +95,7 @@ def test_check_heif_magic(magic):
 
 
 def test_check_heif_magic_wrong():
-    assert not check_heif_magic(b'    fty hei     ')
+    assert not check_heif_magic(b'    ftyphey!    ')
 
 
 @pytest.mark.parametrize('orientation', list(range(1, 9)))
@@ -119,76 +123,3 @@ def test_orientation(orientation, orientation_ref_image):
     # The average diff between transposed and original image should be small
     avg_diffs = avg_diff(transposed, orientation_ref_image, threshold=20)
     assert max(avg_diffs) <= 0.02
-
-
-def open_with_custom_meta(path, *, exif=None, crop=None, orientation=0):
-    def my_pyheif_open(*args, **kwargs):
-        heif = pyheif_open(*args, **kwargs)
-        if exif is None:
-            heif.metadata = None
-        else:
-            exif_data = Image.Exif()
-            exif_data.update(exif)
-            heif.metadata = [{'type': 'Exif', 'data': exif_data.tobytes()}]
-        heif.transformations = {
-            'crop': crop if crop else (0, 0) + heif.size,
-            'orientation_tag': orientation,
-        }
-        return heif
-
-    with mock.patch('pyheif.open') as open_mock:
-        open_mock.side_effect = my_pyheif_open
-        image = Image.open(path)
-        assert open_mock.called
-
-    return image
-
-
-def test_no_orientation_and_no_exif():
-    image = open_with_custom_meta(respath('test2.heic'), orientation=0)
-    assert 'exif' not in image.info
-
-
-def test_orientation_and_no_exif():
-    image = open_with_custom_meta(respath('test2.heic'), orientation=7)
-
-    assert 'exif' in image.info
-    assert image.getexif()[274] == 7
-
-
-def test_no_orientation_and_exif_with_rotation():
-    image = open_with_custom_meta(
-        respath('test2.heic'), orientation=0, exif={274: 7})
-
-    assert 'exif' in image.info
-    assert image.getexif()[274] == 7
-
-
-def test_orientation_and_exif_with_rotation():
-    # Orientation tag from file should suppress Exif value
-    image = open_with_custom_meta(
-        respath('test2.heic'), orientation=1, exif={274: 7})
-
-    assert 'exif' in image.info
-    assert image.getexif()[274] == 1
-
-
-def test_orientation_and_exif_without_rotation():
-    image = open_with_custom_meta(
-        respath('test2.heic'), orientation=1, exif={270: "Sample image"})
-
-    assert 'exif' in image.info
-    assert image.getexif()[274] == 1
-
-
-def test_crop_on_load():
-    ref_image = Image.open(respath('test2.heic'))
-    assert ref_image.size == (1280, 720)
-
-    image = open_with_custom_meta(respath('test2.heic'), crop=(0, 0, 512, 256))
-    assert image.size == (512, 256)
-    assert image.copy() == ref_image.crop((0, 0, 512, 256))
-
-    image = open_with_custom_meta(respath('test2.heic'), crop=(99, 33, 512, 256))
-    assert image.size == (512, 256)
-    assert image.copy() == ref_image.crop((99, 33, 611, 289))
