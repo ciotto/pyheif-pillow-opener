@@ -6,7 +6,7 @@ import pytest
 from PIL import Image, ImageCms, ImageOps
 from pyheif.error import HeifError
 
-from HeifImagePlugin import check_heif_magic
+from HeifImagePlugin import check_heif_magic, pyheif_supports_transformations
 
 from . import avg_diff, respath
 
@@ -102,23 +102,25 @@ def test_check_heif_magic_wrong():
 def test_orientation(orientation, orientation_ref_image):
     image = Image.open(respath('orientation', f'Landscape_{orientation}.heic'))
 
-    # There should be exif in each image, even if Orientation is 0
-    assert 'exif' in image.info
+    if pyheif_supports_transformations:
+        # There should be exif in each image, even if Orientation is 0
+        assert 'exif' in image.info
 
-    # There should be Orientation tag for each image
-    exif = image.getexif()
-    assert 0x0112 in exif
+        # There should be Orientation tag for each image
+        exif = image.getexif()
+        assert 0x0112 in exif
 
-    # And this orientation should be the same as in filename
-    assert exif[0x0112] == orientation
+        # And this orientation should be the same as in filename
+        assert exif[0x0112] == orientation
 
     # Transposed image shoud be Landscape
     transposed = ImageOps.exif_transpose(image)
     assert transposed.size == (600, 450)
 
-    # Image should change after transposition
-    if orientation != 1:
-        assert image != transposed
+    if pyheif_supports_transformations:
+        # Image should change after transposition
+        if orientation != 1:
+            assert image != transposed
 
     # The average diff between transposed and original image should be small
     avg_diffs = avg_diff(transposed, orientation_ref_image, threshold=20)

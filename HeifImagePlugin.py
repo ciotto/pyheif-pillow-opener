@@ -1,3 +1,4 @@
+import inspect
 from copy import copy
 from weakref import WeakKeyDictionary
 
@@ -10,6 +11,9 @@ from pyheif.error import HeifError
 
 ffi = FFI()
 _keep_refs = WeakKeyDictionary()
+pyheif_supports_transformations = (
+    'transformations' in inspect.signature(pyheif.HeifFile).parameters
+)
 
 
 def _crop_heif_file(heif):
@@ -79,7 +83,8 @@ class HeifImageFile(ImageFile.ImageFile):
 
     def _open(self):
         try:
-            heif_file = pyheif.open(self.fp, apply_transformations=False)
+            heif_file = pyheif.open(
+                self.fp, apply_transformations=not pyheif_supports_transformations)
         except HeifError as e:
             raise SyntaxError(str(e))
 
@@ -87,10 +92,13 @@ class HeifImageFile(ImageFile.ImageFile):
             self.fp.close()
         self.fp = None
 
-        heif_file = _rotate_heif_file(heif_file)
+        if pyheif_supports_transformations:
+            heif_file = _rotate_heif_file(heif_file)
+            self._size = heif_file.transformations['crop'][2:4]
+        else:
+            self._size = heif_file.size
 
         self.mode = heif_file.mode
-        self._size = heif_file.transformations['crop'][2:4]
 
         if heif_file.metadata:
             for data in heif_file.metadata:
@@ -116,7 +124,8 @@ class HeifImageFile(ImageFile.ImageFile):
     def load(self):
         if self.heif_file:
             heif_file = self.heif_file.load()
-            heif_file = _crop_heif_file(heif_file)
+            if pyheif_supports_transformations:
+                heif_file = _crop_heif_file(heif_file)
 
             self.load_prepare()
             self.frombytes(heif_file.data, "raw", (self.mode, heif_file.stride))
