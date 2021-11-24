@@ -21,13 +21,26 @@ check: clean
 	pytest --cov=. --cov-report=xml tests
 
 
-.PHONY: install-pillow-latest install-pillow-prod
+.PHONY: install-pyheif-master-pillow-latest install-pyheif-master-pillow-prod
 
-install-pillow-latest:
+install-pyheif-master-pillow-latest:
+	pip install --use-deprecated=legacy-resolver .[test] \
+		-e git+https://github.com/carsales/pyheif.git@master#egg=pyheif
+
+install-pyheif-master-pillow-prod:
+	sudo apt install --no-install-recommends -y libjpeg-dev
+	pip install --use-deprecated=legacy-resolver .[test] \
+		-e git+https://github.com/uploadcare/pillow-simd.git@simd/6.0-cmyk16bit#egg=pillow \
+		-e git+https://github.com/carsales/pyheif.git@master#egg=pyheif
+
+
+.PHONY: install-pyheif-prod-pillow-latest install-pyheif-prod-pillow-prod
+
+install-pyheif-prod-pillow-latest:
 	pip install --use-deprecated=legacy-resolver .[test] \
 		-e git+https://github.com/uploadcare/pyheif.git@prod-avif-tests#egg=pyheif
 
-install-pillow-prod:
+install-pyheif-prod-pillow-prod:
 	sudo apt install --no-install-recommends -y libjpeg-dev
 	pip install --use-deprecated=legacy-resolver .[test] \
 		-e git+https://github.com/uploadcare/pillow-simd.git@simd/6.0-cmyk16bit#egg=pillow \

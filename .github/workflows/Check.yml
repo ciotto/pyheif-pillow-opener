@@ -1,27 +1,28 @@
 on: [push]
 
 jobs:
-  pyheif-prod:
-    name: Prod pyheif, py${{ matrix.python-version }}, pillow-${{ matrix.pillow-version }}
+  check:
+    name: py${{ matrix.python }} pillow-${{ matrix.pillow }} pyheif-${{ matrix.pyheif }}
     runs-on: ubuntu-20.04
     timeout-minutes: 3
     strategy:
       matrix:
-        python-version: ['3.7', '3.10']
-        pillow-version: [prod, latest]
+        python: ['3.7', '3.10']
+        pillow: [prod, latest]
+        pyheif: [prod]
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python }}
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ matrix.python }}
     - name: Install system dependencies
       run: |
         BUCKET=https://uploadcare-packages.s3.amazonaws.com
         curl -fLO $BUCKET/libheif/libheif-uc_1.12.0-1b0ac8b-49684de_amd64.deb
         sudo dpkg -i *.deb && rm *.deb
     - name: Install dependencies
-      run: make install-pillow-${{ matrix.pillow-version }}
+      run: make install-pyheif-${{ matrix.pyheif }}-pillow-${{ matrix.pillow }}
     - name: Check
       run: make check
