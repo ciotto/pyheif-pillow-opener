@@ -26,3 +26,8 @@ jobs:
       run: make install-pyheif-${{ matrix.pyheif }}-pillow-${{ matrix.pillow }}
     - name: Check
       run: make check
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v2
+      with:
+        fail_ci_if_error: true
+        verbose: true
