@@ -1,7 +1,10 @@
 from unittest import mock
 
+import pytest
 from PIL import Image
 from pyheif import open as pyheif_open
+
+from HeifImagePlugin import pyheif_supports_transformations
 
 from . import respath
 
@@ -34,6 +37,8 @@ def test_no_orientation_and_no_exif():
     assert 'exif' not in image.info
 
 
+@pytest.mark.skipif(not pyheif_supports_transformations,
+                    reason="pyheif doesn't support transformations")
 def test_orientation_and_no_exif():
     image = open_with_custom_meta(respath('test2.heic'), orientation=7)
 
@@ -49,6 +54,8 @@ def test_no_orientation_and_exif_with_rotation():
     assert image.getexif()[274] == 7
 
 
+@pytest.mark.skipif(not pyheif_supports_transformations,
+                    reason="pyheif doesn't support transformations")
 def test_orientation_and_exif_with_rotation():
     # Orientation tag from file should suppress Exif value
     image = open_with_custom_meta(
@@ -58,6 +65,8 @@ def test_orientation_and_exif_with_rotation():
     assert image.getexif()[274] == 1
 
 
+@pytest.mark.skipif(not pyheif_supports_transformations,
+                    reason="pyheif doesn't support transformations")
 def test_orientation_and_exif_without_rotation():
     image = open_with_custom_meta(
         respath('test2.heic'), orientation=1, exif={270: "Sample image"})
@@ -66,6 +75,8 @@ def test_orientation_and_exif_without_rotation():
     assert image.getexif()[274] == 1
 
 
+@pytest.mark.skipif(not pyheif_supports_transformations,
+                    reason="pyheif doesn't support transformations")
 def test_crop_on_load():
     ref_image = Image.open(respath('test2.heic'))
     assert ref_image.size == (1280, 720)
