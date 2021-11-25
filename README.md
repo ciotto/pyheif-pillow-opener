@@ -42,6 +42,20 @@ This is not a big library but if you want to contribute is very easy!
 
 ## Changelog
 
+### 0.3.0
+
+! This version requires pyheif with `pyheif.open` API. As of 2021.11.25 this API
+isn't released and is in pyheif's master. See `install-pyheif-master-pillow-latest`
+target in the `Makefile` to install it.
+
+* `pyheif.open` API is used for lazy images loading.
+* Fixed an error when the plugin tries to load any ISOBMFF files.
+* AVIF files should work before, but now this is official.
+* Patched versions of `pyheif` and `libheif` with exposed transformations is supported.
+  In this case opened image isn't transformed on loading and orientation is stored
+  in EXIF `Orientation` tag like for all other image formats.
+  This is faster and consumes less memory.
+
 ### 0.2.0
 
 * No need to register, works after import.
