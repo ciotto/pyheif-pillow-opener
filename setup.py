@@ -29,6 +29,13 @@ setup(
         "pyheif>=0.5.1",
         "piexif>=1.1.3",
     ],
+    extras_require={
+        'test': [
+            'pillow>=6.0.0'
+            'pytest>=4.6.5',
+            'pytest-cov>=2.8.1',
+        ]
+    },
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',

@@ -1,5 +1,2 @@
 [run]
-include = pyheif_pillow_opener/*
-omit = *test_*
-# see <https://lautaportti.wordpress.com/2011/05/07/test-coverage-analysis/>
-branch = True
+omit = setup.py
