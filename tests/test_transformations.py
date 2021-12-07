@@ -9,15 +9,19 @@ from HeifImagePlugin import pyheif_supports_transformations
 from . import respath
 
 
-def open_with_custom_meta(path, *, exif=None, crop=None, orientation=0):
+def open_with_custom_meta(path, *, exif_data=None, exif=None, crop=None, orientation=0):
     def my_pyheif_open(*args, **kwargs):
+        nonlocal exif_data
         heif = pyheif_open(*args, **kwargs)
-        if exif is None:
-            heif.metadata = None
-        else:
+        if exif is not None:
+            assert not exif_data  # not at the same time
             exif_data = Image.Exif()
             exif_data.update(exif)
-            heif.metadata = [{'type': 'Exif', 'data': exif_data.tobytes()}]
+            exif_data = exif_data.tobytes()
+        if exif_data is not None:
+            heif.metadata = [{'type': 'Exif', 'data': exif_data}]
+        else:
+            heif.metadata = None
         heif.transformations = {
             'crop': crop if crop else (0, 0) + heif.size,
             'orientation_tag': orientation,
@@ -35,6 +39,20 @@ def open_with_custom_meta(path, *, exif=None, crop=None, orientation=0):
 def test_no_orientation_and_no_exif():
     image = open_with_custom_meta(respath('test2.heic'), orientation=0)
     assert 'exif' not in image.info
+
+
+def test_empty_exif():
+    image = open_with_custom_meta(respath('test2.heic'), exif_data=b'', orientation=1)
+    assert 'exif' in image.info
+    assert image.getexif()[274] == 1
+
+
+def test_broken_exif():
+    broken = b'Exif\x00\x00II*\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+    image = open_with_custom_meta(respath('test2.heic'),
+                                  exif_data=broken, orientation=1)
+    assert 'exif' in image.info
+    assert image.getexif()[274] == 1
 
 
 @pytest.mark.skipif(not pyheif_supports_transformations,
