@@ -57,24 +57,35 @@ def _rotate_heif_file(heif):
     if not (1 <= orientation <= 8):
         return heif
 
-    exif_id = None
-    for i, data in enumerate(heif.metadata or []):
-        if data['type'] == 'Exif':
-            exif_id = i
-            break
+    exif = {'0th': {piexif.ImageIFD.Orientation: orientation}}
+    if heif.exif:
+        try:
+            exif = piexif.load(heif.exif)
+            exif['0th'][piexif.ImageIFD.Orientation] = orientation
+        except Exception:
+            pass
 
     new_heif = copy(heif)
-    new_heif.metadata = (heif.metadata or []).copy()
     new_heif.transformations = dict(heif.transformations, orientation_tag=0)
-
-    if exif_id is None:
-        exif = {'0th': {piexif.ImageIFD.Orientation: orientation}}
-        new_heif.metadata.append({'type': 'Exif', 'data': piexif.dump(exif)})
-    else:
-        exif = piexif.load(heif.metadata[exif_id]['data'])
-        exif['0th'][piexif.ImageIFD.Orientation] = orientation
-        new_heif.metadata[exif_id] = {'type': 'Exif', 'data': piexif.dump(exif)}
+    new_heif.exif = piexif.dump(exif)
     return new_heif
+
+
+def _extract_heif_exif(heif_file):
+    """
+    Unlike other helper functions, this alters heif_file in-place.
+    """
+    heif_file.exif = None
+
+    clean_metadata = []
+    for item in heif_file.metadata or []:
+        if item['type'] == 'Exif':
+            if heif_file.exif is None:
+                if item['data'] and item['data'][0:4] == b"Exif":
+                    heif_file.exif = item['data']
+        else:
+            clean_metadata.append(item)
+    heif_file.metadata = clean_metadata
 
 
 class HeifImageFile(ImageFile.ImageFile):
@@ -88,6 +99,8 @@ class HeifImageFile(ImageFile.ImageFile):
         except HeifError as e:
             raise SyntaxError(str(e))
 
+        _extract_heif_exif(heif_file)
+
         if self._exclusive_fp:
             self.fp.close()
         self.fp = None
@@ -100,11 +113,8 @@ class HeifImageFile(ImageFile.ImageFile):
 
         self.mode = heif_file.mode
 
-        if heif_file.metadata:
-            for data in heif_file.metadata:
-                if data['type'] == 'Exif':
-                    self.info['exif'] = data['data']
-                    break
+        if heif_file.exif:
+            self.info['exif'] = heif_file.exif
 
         if heif_file.color_profile:
             # rICC is Restricted ICC. Still not sure can it be used.
