@@ -42,6 +42,14 @@ This is not a big library but if you want to contribute is very easy!
 
 ## Changelog
 
+### 0.3.1
+
+! This version requires pyheif with `pyheif.open` API. As of 2021.11.25 this API
+isn't released and is in pyheif's master. See `install-pyheif-master-pillow-latest`
+target in the `Makefile` to install it.
+
+* Fixed potential vulnerability with arbitrary data in exif metadata.
+
 ### 0.3.0
 
 ! This version requires pyheif with `pyheif.open` API. As of 2021.11.25 this API
