@@ -9,7 +9,7 @@ jobs:
       matrix:
         python: ['3.7', '3.10']
         pillow: [prod, latest]
-        pyheif: [prod, master]
+        pyheif: [prod, latest]
 
     steps:
     - uses: actions/checkout@v2

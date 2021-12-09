@@ -42,6 +42,10 @@ This is not a big library but if you want to contribute is very easy!
 
 ## Changelog
 
+### 0.3.2
+
+* Depends on latest pyheif.
+
 ### 0.3.1
 
 ! This version requires pyheif with `pyheif.open` API. As of 2021.11.25 this API
