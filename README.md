@@ -1,5 +1,6 @@
 # pyheif-pillow-opener
 
+[![Project Status: Moved](http://www.repostatus.org/badges/latest/moved.svg)](https://github.com/uploadcare/heif-image-plugin/)
 [![build](https://travis-ci.org/ciotto/pyheif-pillow-opener.svg?branch=master)](https://travis-ci.org/ciotto/pyheif-pillow-opener)
 [![coverage](https://img.shields.io/codecov/c/gh/ciotto/pyheif-pillow-opener)](https://codecov.io/gh/ciotto/pyheif-pillow-opener)
 [![Py Versions](https://img.shields.io/pypi/pyversions/pyheif-pillow-opener)](https://pypi.python.org/pypi/pyheif-pillow-opener/)
@@ -9,41 +10,9 @@
 
 **pyheif-pillow-opener** is a *simple* HEIF/HEIC opener for *Pillow* base on *pyhief* library.
 
-## Installation
+## Moved
 
-You can install **pyheif-pillow-opener** from *PyPi*:
-
-`pip install pyheif-pillow-opener`
-
-or from GitHub:
-
-`pip install https://github.com/ciotto/pyheif-pillow-opener/archive/master.zip`
-
-## How to use
-
-```
-from PIL import Image
-
-from pyheif_pillow_opener import register_heif_opener
-
-register_heif_opener()
-
-image = Image.open('test.heic')
-image.load()
-```
-
-## How to contribute
-
-This is not a big library but if you want to contribute is very easy!
-
- 1. clone the repository `git clone https://github.com/ciotto/pyheif-pillow-opener.git`
- 1. install all requirements `make init`
- 1. do your fixes or add new awesome features (with tests)
- 1. run the tests `make test`
- 1. commit in new branch and make a pull request
-
----
-
+This project is discontinued in favour of [heif-image-plugin](https://github.com/uploadcare/heif-image-plugin/).
 
 ## License
 
