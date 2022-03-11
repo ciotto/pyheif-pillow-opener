@@ -125,3 +125,15 @@ def test_orientation(orientation, orientation_ref_image):
     # The average diff between transposed and original image should be small
     avg_diffs = avg_diff(transposed, orientation_ref_image, threshold=20)
     assert max(avg_diffs) <= 0.02
+
+
+def test_not_load_truncated():
+    image = Image.open(respath('test-crop.heic'))
+    with pytest.raises(HeifError):
+        image.load()
+
+
+@mock.patch('PIL.ImageFile.LOAD_TRUNCATED_IMAGES', True)
+def test_load_truncated():
+    image = Image.open(respath('test-crop.heic'))
+    image.load()
