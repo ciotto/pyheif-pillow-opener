@@ -133,7 +133,18 @@ class HeifImageFile(ImageFile.ImageFile):
 
     def load(self):
         if self.heif_file:
-            heif_file = self.heif_file.load()
+            self.load_prepare()
+            try:
+                heif_file = self.heif_file.load()
+            except HeifError as e:
+                cropped_file = e.code == 7 and e.subcode == 100
+                if cropped_file and ImageFile.LOAD_TRUNCATED_IMAGES:
+                    # Ignore EOF error and return blank image
+                    self.heif_file.data = None
+                    self.heif_file = None
+                    return super().load()
+                raise
+
             if pyheif_supports_transformations:
                 heif_file = _crop_heif_file(heif_file)
 
