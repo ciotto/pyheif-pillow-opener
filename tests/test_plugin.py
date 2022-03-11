@@ -3,7 +3,7 @@ from io import BytesIO
 from unittest import mock
 
 import pytest
-from PIL import Image, ImageCms, ImageOps
+from PIL import Image, ImageCms, ImageFile, ImageOps
 from pyheif.error import HeifError
 
 from HeifImagePlugin import check_heif_magic, pyheif_supports_transformations
@@ -125,3 +125,16 @@ def test_orientation(orientation, orientation_ref_image):
     # The average diff between transposed and original image should be small
     avg_diffs = avg_diff(transposed, orientation_ref_image, threshold=20)
     assert max(avg_diffs) <= 0.02
+
+
+def test_not_load_truncated():
+    image = Image.open(respath('IMG_2529.HEIC'))
+    with pytest.raises(HeifError):
+        image.load()
+
+
+def test_load_truncated():
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    image = Image.open(respath('IMG_2529.HEIC'))
+    image.load()
+    ImageFile.LOAD_TRUNCATED_IMAGES = False
