@@ -42,6 +42,10 @@ This is not a big library but if you want to contribute is very easy!
 
 ## Changelog
 
+### 0.4.0
+
+* Bypass some decoding errors when `ImageFile.LOAD_TRUNCATED_IMAGES` is True.
+
 ### 0.3.2
 
 * Depends on latest pyheif.
