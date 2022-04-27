@@ -1,4 +1,6 @@
 import inspect
+import subprocess
+import tempfile
 from copy import copy
 from weakref import WeakKeyDictionary
 
@@ -14,6 +16,7 @@ _keep_refs = WeakKeyDictionary()
 pyheif_supports_transformations = (
     'transformations' in inspect.signature(pyheif.HeifFile).parameters
 )
+HEIF_ENC_BIN = 'heif-enc'
 
 
 def _crop_heif_file(heif):
@@ -158,5 +161,62 @@ def check_heif_magic(data):
     return pyheif.check(data) != pyheif.heif_filetype_no
 
 
+def _save(im, fp, filename):
+    # Save it before subsequent im.save() call
+    info = im.encoderinfo
+
+    with tempfile.NamedTemporaryFile(suffix='.png') as tmpfile:
+        im.save(
+            tmpfile, format='PNG', optimize=False, compress_level=0,
+            icc_profile=info.get('icc_profile', im.info.get('icc_profile')),
+            exif=info.get('exif', im.info.get('exif'))
+        )
+
+        cmd = [HEIF_ENC_BIN, '-o', '/dev/stdout', tmpfile.name]
+
+        avif = info.get('avif')
+        if avif is None and filename:
+            ext = filename.rpartition('.')[2].lower()
+            avif = ext == 'avif'
+        if avif:
+            cmd.append('-A')
+
+        if info.get('encoder'):
+            cmd.extend(['-e', info['encoder']])
+
+        if info.get('quality') is not None:
+            cmd.extend(['-q', str(info['quality'])])
+
+        subsampling = info.get('subsampling')
+        if subsampling is not None:
+            if subsampling == 0:
+                subsampling = '444'
+            elif subsampling == 1:
+                subsampling = '422'
+            elif subsampling == 2:
+                subsampling = '420'
+            cmd.extend(['-p', 'chroma=' + subsampling])
+
+        if info.get('speed') is not None:
+            cmd.extend(['-p', 'speed=' + str(info['speed'])])
+
+        if info.get('concurrency') is not None:
+            cmd.extend(['-p', 'threads=' + str(info['concurrency'])])
+
+        try:
+            # Warning: Do not open stdout and stderr at the same time
+            with subprocess.Popen(cmd, stdout=subprocess.PIPE) as enc:
+                for data in iter(lambda: enc.stdout.read(128 * 1024), b''):
+                    fp.write(data)
+                if enc.wait():
+                    raise subprocess.CalledProcessError(enc.returncode, cmd)
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                2, f"Can't find heif encoding binary file. Install `'{HEIF_ENC_BIN}'` "
+                + "or set `HeifImagePlugin.HEIF_ENC_BIN` to full path.")
+
+
 Image.register_open(HeifImageFile.format, HeifImageFile, check_heif_magic)
+Image.register_save(HeifImageFile.format, _save)
+Image.register_extensions(HeifImageFile.format, [".heic", ".avif"])
 Image.register_mime(HeifImageFile.format, 'image/heif')

@@ -20,7 +20,7 @@ jobs:
     - name: Install system dependencies
       run: |
         BUCKET=https://uploadcare-packages.s3.amazonaws.com
-        curl -fLO $BUCKET/libheif/libheif-uc_1.12.0-1b0ac8b-49684de_amd64.deb
+        curl -fLO $BUCKET/libheif/libheif-uc_1.12.0-1c6bc1d-b5186c8_amd64.deb
         sudo dpkg -i *.deb && rm *.deb
     - name: Install dependencies
       run: make install-pyheif-${{ matrix.pyheif }}-pillow-${{ matrix.pillow }}

@@ -24,15 +24,14 @@ def test_load_heic(image_name):
     'image_path',
     list(glob(respath('avif-sample-images', '*.avif')))
 )
-def test_load_avif(image_path):
+def test_load_avif(image_path, fox_ref_image):
     image = Image.open(image_path)
-    ref = Image.open(respath('avif-sample-images', 'fox.jpg'))
 
     if '.monochrome.' in image_path:
         image = image.convert('L')
-        ref = ref.convert('L')
+        fox_ref_image = fox_ref_image.convert('L')
 
-    avg_diffs = avg_diff(image, ref, threshold=20)
+    avg_diffs = avg_diff(image, fox_ref_image, threshold=20)
     assert max(avg_diffs) <= 0.02
 
 
