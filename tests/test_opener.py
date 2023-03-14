@@ -6,93 +6,93 @@ import pytest
 from PIL import Image
 from pyheif.error import HeifError
 
-from pyheif_pillow_opener import register_heif_opener, check_heif_magic
+from pyheif_pillow_opener import check_heif_magic, register_heif_opener
 
 register_heif_opener()
 
 
 @pytest.mark.parametrize(
-    ['image_name'],
+    ["image_name"],
     [
-        ('test1.heic',),
-        ('test2.heic',),
-        ('test3.heic',),
-        ('test4.heif',),
-    ]
+        ("test1.heic",),
+        ("test2.heic",),
+        ("test3.heic",),
+        ("test4.heif",),
+    ],
 )
 def test_open_image(image_name):
-    image = Image.open(os.path.join('tests', 'images', image_name))
+    image = Image.open(os.path.join("tests", "images", image_name))
     image.load()
 
     assert image is not None
 
 
 def test_open_image_exif():
-    image = Image.open(os.path.join('tests', 'images', 'test1.heic'))
+    image = Image.open(os.path.join("tests", "images", "test1.heic"))
 
-    assert image.info['exif'] is not None
+    assert image.info["exif"] is not None
 
 
 def test_open_image_exif_none():
-    image = Image.open(os.path.join('tests', 'images', 'test2.heic'))
+    image = Image.open(os.path.join("tests", "images", "test2.heic"))
 
-    assert 'exif' not in image.info
+    assert "exif" not in image.info
 
 
-@mock.patch('pyheif_pillow_opener.check_heif_magic', return_value=False)
+@mock.patch("pyheif_pillow_opener.check_heif_magic", return_value=False)
 def test_open_image_short(check_heif_magic_mock):
     with pytest.raises(PIL.UnidentifiedImageError):
-        Image.open(os.path.join('tests', 'images', 'test1.heic'))
+        Image.open(os.path.join("tests", "images", "test1.heic"))
 
 
-@mock.patch('pyheif.read', side_effect=HeifError(code=1, subcode=2, message='Error'))
+@mock.patch("pyheif.read", side_effect=HeifError(code=1, subcode=2, message="Error"))
 def test_open_image_error(read_mock):
     with pytest.raises(PIL.UnidentifiedImageError):
-        Image.open(os.path.join('tests', 'images', 'test1.heic'))
+        Image.open(os.path.join("tests", "images", "test1.heic"))
 
 
-@mock.patch('pyheif.read')
+@mock.patch("pyheif.read")
 def test_open_image_metadata(read_mock):
     m = mock.MagicMock()
     m.size = (10, 20)
-    m.mode = 'RGB'
+    m.mode = "RGB"
     m.metadata = [
-        {'type': 'foo', 'data': 'bar'},
-        {'type': 'bar', 'data': 'foo'},
+        {"type": "foo", "data": "bar"},
+        {"type": "bar", "data": "foo"},
     ]
     read_mock.return_value = m
 
-    image = Image.open(os.path.join('tests', 'images', 'test1.heic'))
+    image = Image.open(os.path.join("tests", "images", "test1.heic"))
 
     assert image is not None
 
 
 @pytest.mark.parametrize(
-    ['magic'],
+    ["magic"],
     [
-        (b'heic',),
-        (b'heix',),
-        (b'hevc',),
-        (b'hevx',),
-        (b'heim',),
-        (b'heis',),
-        (b'hevm',),
-        (b'hevs',),
-        (b'mif1',),
-    ]
+        (b"heic",),
+        (b"heix",),
+        (b"hevc",),
+        (b"hevx",),
+        (b"heim",),
+        (b"heis",),
+        (b"hevm",),
+        (b"hevs",),
+        (b"mif1",),
+    ],
 )
 def test_check_heif_magic(magic):
-    assert check_heif_magic(b'    ftyp%b    ' % magic)
+    assert check_heif_magic(b"    ftyp%b    " % magic)
 
 
 def test_check_heif_magic_wrong():
-    assert not check_heif_magic(b'    fty hei     ')
+    assert not check_heif_magic(b"    fty hei     ")
 
 
-@mock.patch.object(Image, 'register_open')
-@mock.patch.object(Image, 'register_decoder')
-@mock.patch.object(Image, 'register_extensions')
-@mock.patch.object(Image, 'register_mime')
+@mock.patch.object(Image, "register_open")
+@mock.patch.object(Image, "register_decoder")
+@mock.patch.object(Image, "register_extensions")
+@mock.patch.object(Image, "register_mime")
 def test_register_heif_opener(
     register_open_mock,
     register_decoder_mock,
