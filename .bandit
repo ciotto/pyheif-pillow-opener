@@ -1,0 +1,3 @@
+[bandit]
+exclude:./tests/,tests/*
+targets=pyheif_pillow_opener/
