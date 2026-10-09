@@ -6,7 +6,7 @@ jobs:
   test:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 

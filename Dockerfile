@@ -50,7 +50,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Recent libheif and binaries from Uploadcare
 FROM base AS libheif-ucare
 
-ARG LIBHEIF_UC=1.23.5-413e2a8-7521f33
+ARG LIBHEIF_UC=1.23.6-f81f28a-8543bdc
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
