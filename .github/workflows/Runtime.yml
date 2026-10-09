@@ -12,7 +12,7 @@ jobs:
       matrix:
         include:
           - { stack: system, pillow: latest }
-          - { stack: embedded, pillow: latest }
+          - { stack: bundled, libheif: '1.23.*', pillow: latest }
           - { stack: ucare, libheif: '1.18.2-bf35e9e-47f4fc0', pillow: latest }
           - { stack: ucare, libheif: '1.21.2-62f1b8c-1a671c7', pillow: latest }
           - { stack: ucare, libheif: '1.23.3-78c9746-150efd1', pillow: latest }
@@ -37,10 +37,12 @@ jobs:
             STACK=${{ matrix.stack }}
             PILLOW=${{ matrix.pillow }}
             LIBHEIF_UC=${{ matrix.libheif }}
+            LIBHEIF_BINARY=${{ matrix.libheif }}
           cache-from: type=gha,scope=${{ matrix.stack }}-${{ matrix.pillow }}-${{ matrix.libheif }}
           cache-to: type=gha,mode=max,scope=${{ matrix.stack }}-${{ matrix.pillow }}-${{ matrix.libheif }}
 
       - name: Test
+        # Local Python modules use the installed extension through extend_path.
         run: docker run --rm -v .:/src heif-image-plugin:test make test
 
       - name: Upload coverage to Codecov

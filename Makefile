@@ -10,19 +10,20 @@ commit:
 
 .PHONY: lint
 lint:
-	isort --diff HeifImagePlugin.py ./tests
-	flake8 HeifImagePlugin.py ./tests
+	isort --check-only --diff HeifImagePlugin.py _heif_image_plugin bindings setup.py ./tests
+	flake8 HeifImagePlugin.py _heif_image_plugin bindings setup.py ./tests
 
 
 .PHONY: test
 test:
-	pytest --cov=HeifImagePlugin
+	pytest --cov=HeifImagePlugin --cov=_heif_image_plugin
 
 
 ARCH ?= amd64
 STACK ?= system
 PILLOW ?=
 LIBHEIF_UC ?=
+LIBHEIF_BINARY ?=
 
 
 .PHONY: dockerignore
@@ -37,6 +38,7 @@ docker_build: dockerignore
 		--build-arg STACK=${STACK} \
 		$(if $(PILLOW),--build-arg PILLOW=$(PILLOW)) \
 		$(if $(LIBHEIF_UC),--build-arg LIBHEIF_UC=$(LIBHEIF_UC)) \
+		$(if $(LIBHEIF_BINARY),--build-arg LIBHEIF_BINARY=$(LIBHEIF_BINARY)) \
 		-t heif-image-plugin:latest .
 
 

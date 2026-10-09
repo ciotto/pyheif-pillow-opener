@@ -19,17 +19,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install libheif binaries
-        run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y \
-            libheif-dev libheif-examples \
-            libheif-plugin-libde265 libheif-plugin-x265 libheif-plugin-aomenc
-
       - name: Install dependencies
         run: |
           pip install --upgrade 'pip>=25.1'
-          pip install --only-binary=pillow --group dev-pillow-latest -e .
+          pip install --only-binary=pillow --group dev-pillow-latest -e '.[libheif]'
 
       - name: Test
         run: make test

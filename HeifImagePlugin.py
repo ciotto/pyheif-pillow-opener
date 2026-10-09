@@ -1,125 +1,14 @@
 import subprocess
 import tempfile
-from copy import copy
-from dataclasses import dataclass
-from weakref import WeakKeyDictionary
 
-import piexif
-import pyheif
-from cffi import FFI
 from PIL import Image, ImageFile
-from pyheif import reader as pyheif_reader
-from pyheif.error import HeifError
 
-
-class _LibheifProxy:
-    def heif_decoding_options_alloc(self):
-        options = _native_libheif.heif_decoding_options_alloc()
-        if hasattr(options, 'strict_decoding'):
-            options.strict_decoding = int(not ImageFile.LOAD_TRUNCATED_IMAGES)
-        return options
-
-    def __getattr__(self, name):
-        return getattr(_native_libheif, name)
-
-
-_native_libheif = pyheif_reader.libheif
-pyheif_reader.libheif = _LibheifProxy()
-
-
-@dataclass
-class LibheifError:
-    code: int
-    subcode: int
-
-    def __eq__(self, e):
-        if not isinstance(e, HeifError):  # pragma: no cover
-            return False
-        return e.code == self.code and e.subcode == self.subcode
-
-
-class Errors:
-    end_of_file = LibheifError(7, 100)
-    unsupported_color_conversion = LibheifError(4, 3003)
-
-
-ffi = FFI()
-_keep_refs = WeakKeyDictionary()
-HEIF_ENC_BIN = 'heif-enc'
-
-
-def _crop_heif_file(heif):
-    # Zero-copy crop before loading. Just shifts data pointer and updates meta.
-    crop = heif.transformations.crop
-    if crop == (0, 0) + heif.size:
-        return heif
-
-    if heif.mode not in ("L", "RGB", "RGBA"):  # pragma: no cover
-        raise ValueError("Unknown mode")
-    pixel_size = len(heif.mode)
-
-    offset = heif.stride * crop[1] + pixel_size * crop[0]
-    cdata = ffi.from_buffer(heif.data, require_writable=False) + offset
-    data = ffi.buffer(cdata, heif.stride * crop[3])
-
-    # Keep reference to the original data as long as "cdata + offset" is alive.
-    # Normally ffi.from_buffer should hold it for us but unfortunately
-    # cdata + offset creates a new cdata object without reference.
-    _keep_refs[cdata] = heif.data
-
-    new_heif = copy(heif)
-    new_heif.size = crop[2:4]
-    new_heif.transformations = copy(heif.transformations)
-    new_heif.transformations.crop = (0, 0) + crop[2:4]
-    new_heif.data = data
-    return new_heif
-
-
-def _rotate_heif_file(heif):
-    """
-    Heif files already contain transformation chunks imir and irot which are
-    dominate over Orientation tag in EXIF.
-
-    This is not aligned with other formats behavior and we MUST fix EXIF after
-    loading to prevent unexpected rotation after re-saving in other formats.
-
-    And we come up to there is no reasons to force rotation of HEIF images
-    after loading since we need update EXIF anyway.
-    """
-    orientation = heif.transformations.orientation_tag
-    if not (1 <= orientation <= 8):
-        return heif
-
-    exif = {'0th': {piexif.ImageIFD.Orientation: orientation}}
-    if heif.exif:
-        try:
-            exif = piexif.load(heif.exif)
-            exif['0th'][piexif.ImageIFD.Orientation] = orientation
-        except Exception:
-            pass
-
-    new_heif = copy(heif)
-    new_heif.transformations = copy(heif.transformations)
-    new_heif.transformations.orientation_tag = 0
-    new_heif.exif = piexif.dump(exif)
-    return new_heif
-
-
-def _extract_heif_exif(heif_file):
-    """
-    Unlike other helper functions, this alters heif_file in-place.
-    """
-    heif_file.exif = None
-
-    clean_metadata = []
-    for item in heif_file.metadata or []:
-        if item['type'] == 'Exif':
-            if heif_file.exif is None:
-                if item['data'] and item['data'][0:4] == b"Exif":
-                    heif_file.exif = item['data']
-        else:
-            clean_metadata.append(item)
-    heif_file.metadata = clean_metadata
+from _heif_image_plugin import reader
+from _heif_image_plugin._native import HEIF_ENC_BIN, libheif_version
+from _heif_image_plugin.errors import Errors, HeifError, LibheifError  # noqa: F401
+from _heif_image_plugin.metadata import (
+    extract_heif_exif as _extract_heif_exif, rotate_heif_file as _rotate_heif_file)
+from _heif_image_plugin.transformations import crop_heif_file as _crop_heif_file
 
 
 class HeifImageFile(ImageFile.ImageFile):
@@ -128,8 +17,8 @@ class HeifImageFile(ImageFile.ImageFile):
 
     def _open_heif_file(self, apply_transformations):
         try:
-            heif_file = pyheif.open(
-                self.fp, apply_transformations=apply_transformations)
+            heif_file = reader.open(
+                self.fp.read(), apply_transformations=apply_transformations)
         except HeifError as e:
             raise SyntaxError(str(e))
 
@@ -176,14 +65,16 @@ class HeifImageFile(ImageFile.ImageFile):
         if heif_file:
             try:
                 try:
-                    heif_file = heif_file.load()
+                    heif_file = heif_file.load(
+                        strict_decoding=not ImageFile.LOAD_TRUNCATED_IMAGES)
                 except HeifError as e:
                     if e != Errors.unsupported_color_conversion:
                         raise
                     # Unsupported feature: Unsupported color conversion
                     # https://github.com/strukturag/libheif/issues/1273
                     self.fp.seek(0)
-                    heif_file = self._open_heif_file(True).load()
+                    heif_file = self._open_heif_file(True).load(
+                        strict_decoding=not ImageFile.LOAD_TRUNCATED_IMAGES)
             except HeifError as e:
                 # Ignore EOF error and return blank image otherwise
                 cropped_file = e == Errors.end_of_file
@@ -202,10 +93,10 @@ class HeifImageFile(ImageFile.ImageFile):
 
 
 def check_heif_magic(data):
-    return pyheif.check(data) != pyheif.heif_filetype_no
+    return reader.check(data)
 
 
-is_buggy_la_mode = '1.17.0' <= pyheif.libheif_version() <= '1.18.2'
+is_buggy_la_mode = (1, 17, 0) <= libheif_version <= (1, 18, 2)
 
 
 def _save(im, fp, filename):

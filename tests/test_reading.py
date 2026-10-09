@@ -4,9 +4,9 @@ from unittest import mock
 
 import pytest
 from PIL import Image, ImageCms, ImageOps
-from pyheif.error import HeifError
-from pyheif.transformations import Transformations
 
+from _heif_image_plugin.errors import HeifError
+from _heif_image_plugin.transformations import Transformations
 from HeifImagePlugin import check_heif_magic
 
 from . import avg_diff, respath
@@ -58,13 +58,14 @@ def test_image_color_profile():
     icc_profile = ImageCms.getOpenProfile(icc_profile)
 
 
-@mock.patch('pyheif.open', side_effect=HeifError(code=1, subcode=2, message='Error'))
+@mock.patch('_heif_image_plugin.reader.open',
+            side_effect=HeifError(code=1, subcode=2, message='Error'))
 def test_open_image_error(open_mock):
     with pytest.raises(IOError):
         Image.open(respath('test1.heic'))
 
 
-@mock.patch('pyheif.open')
+@mock.patch('_heif_image_plugin.reader.open')
 def test_open_image_metadata(open_mock):
     m = mock.MagicMock()
     m.size = (10, 20)

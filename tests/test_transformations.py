@@ -1,18 +1,20 @@
+from pathlib import Path
 from unittest import mock
 
-import pyheif
 import pytest
-from PIL import Image
-from pyheif import open as pyheif_open
-from pyheif.transformations import Transformations
+from PIL import Image, ImageOps
+
+from _heif_image_plugin._native import libheif_version
+from _heif_image_plugin.reader import open as heif_open
+from _heif_image_plugin.transformations import Transformations
 
 from . import avg_diff, respath
 
 
 def open_with_custom_meta(path, *, exif_data=None, exif=None, crop=None, orientation=0):
-    def my_pyheif_open(*args, **kwargs):
+    def my_heif_open(*args, **kwargs):
         nonlocal exif_data
-        heif = pyheif_open(*args, **kwargs)
+        heif = heif_open(*args, **kwargs)
         if exif is not None:
             assert not exif_data  # not at the same time
             exif_data = Image.Exif()
@@ -28,8 +30,8 @@ def open_with_custom_meta(path, *, exif_data=None, exif=None, crop=None, orienta
             heif.transformations.crop = crop
         return heif
 
-    with mock.patch('pyheif.open') as open_mock:
-        open_mock.side_effect = my_pyheif_open
+    with mock.patch('_heif_image_plugin.reader.open') as open_mock:
+        open_mock.side_effect = my_heif_open
         image = Image.open(path)
         assert open_mock.called
 
@@ -100,8 +102,71 @@ def test_crop_on_load():
     assert image.copy() == ref_image.crop((99, 33, 611, 289))
 
 
+@pytest.mark.parametrize('orientation', range(1, 9))
+@pytest.mark.parametrize('turn_ccw,flip_horizontal,flip_vertical', [
+    (0, False, False), (1, False, False), (2, False, False), (3, False, False),
+    (0, True, False), (0, False, True), (1, True, False), (1, False, True),
+])
+def test_composed_orientation_matches_pixels(orientation, turn_ccw,
+                                             flip_horizontal, flip_vertical):
+    source = Image.frombytes('L', (5, 3), bytes(range(15)))
+    source.getexif()[274] = orientation
+    expected = ImageOps.exif_transpose(source)
+    for _ in range(turn_ccw):
+        expected = expected.transpose(Image.Transpose.ROTATE_90)
+    if flip_horizontal:
+        expected = expected.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    if flip_vertical:
+        expected = expected.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+    transforms = Transformations(*source.size)
+    transforms.orientation_tag = orientation
+    transforms.apply_orientation(turn_ccw=turn_ccw, flip_horizontal=flip_horizontal,
+                                 flip_vertical=flip_vertical)
+    source.getexif()[274] = transforms.orientation_tag
+    assert ImageOps.exif_transpose(source) == expected
+
+
+@pytest.mark.parametrize('orientation', range(1, 9))
+def test_crop_before_orientation_matches_pixels(orientation):
+    source = Image.frombytes('L', (5, 3), bytes(range(15)))
+    source.getexif()[274] = orientation
+    expected = ImageOps.exif_transpose(source).crop((1, 1, 3, 2))
+    transforms = Transformations(*source.size)
+    transforms.orientation_tag = orientation
+    transforms.apply_crop(1, 1, 2, 1)
+    left, top, width, height = transforms.crop
+    cropped = source.crop((left, top, left + width, top + height))
+    cropped.getexif()[274] = transforms.orientation_tag
+    assert ImageOps.exif_transpose(cropped) == expected
+
+
+def test_file_transformations_match_libheif():
+    data = Path(respath('tree-with-transforms.avif')).read_bytes()
+    native = heif_open(data, apply_transformations=False)
+    transformed = heif_open(data, apply_transformations=True)
+    assert native.transformations == transformed.transformations
+    orientation = native.transformations.orientation_tag
+    assert 0 <= orientation <= 8
+    left, top, width, height = native.transformations.crop
+    assert 0 <= left < native.size[0]
+    assert 0 <= top < native.size[1]
+    assert 1 <= width <= native.size[0] - left
+    assert 1 <= height <= native.size[1] - top
+
+    native.load()
+    transformed.load()
+    pixels = Image.frombytes(
+        native.mode, native.size, native.data, 'raw', (native.mode, native.stride))
+    pixels = pixels.crop((left, top, left + width, top + height))
+    pixels.getexif()[274] = orientation
+    expected = Image.frombytes(
+        transformed.mode, transformed.size, transformed.data, 'raw',
+        (transformed.mode, transformed.stride))
+    assert ImageOps.exif_transpose(pixels) == expected
+
+
 @pytest.mark.xfail(
-    '1.19.0' <= pyheif.libheif_version() < '1.22.0',
+    (1, 19, 0) <= libheif_version < (1, 22, 0),
     reason='libheif cannot decode this alpha/crop image',
     strict=True,
 )

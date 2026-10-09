@@ -7,7 +7,7 @@
 [![license](https://img.shields.io/github/license/uploadcare/heif-image-plugin)](https://github.com/uploadcare/heif-image-plugin/blob/main/LICENSE)
 
 A HEIF/HEIC and AVIF plugin for [Pillow](https://pillow.readthedocs.io/)
-based on the [pyheif](https://github.com/carsales/pyheif) library.
+based on [libheif](https://github.com/strukturag/libheif).
 
 Originally based on the [pyheif-pillow-opener](https://github.com/ciotto/pyheif-pillow-opener)
 code from Christian Bianciotto.
@@ -18,7 +18,16 @@ You can install **heif-image-plugin** from *PyPI*:
 
 `pip install heif-image-plugin`
 
-### Install libheif binaries for saving capabilities
+To install bundled libheif, codecs and encoding tools:
+
+```bash
+pip install 'heif-image-plugin[libheif]'
+```
+
+The plugin uses `libheif-binary` when installed; otherwise, it requires system
+libheif. Saving images requires bundled or system `heif-enc` with codecs.
+
+### System libheif
 
 Ubuntu 24.04:
 
@@ -42,9 +51,15 @@ import HeifImagePlugin
 
 image = Image.open('test.heic')
 ImageOps.exif_transpose(image, in_place=True)
-# requires `heif-enc` binary with installed codecs or plugins
+# requires bundled or system `heif-enc` with codecs
 image.save('test.avif')
 ```
+
+To override the encoding executable, assign
+`HeifImagePlugin.HEIF_ENC_BIN = '/path/to/heif-enc'` before saving.
+
+Decoding errors are exposed as `HeifImagePlugin.HeifError`, with `code`,
+`subcode` and `message` fields.
 
 Encoder-specific parameters can be passed when saving:
 
@@ -77,6 +92,20 @@ Contributions are welcome:
 4. Make your changes and add tests.
 5. Run `make lint` and `make test` inside the container.
 6. Commit your changes on a new branch and open a pull request.
+
+### Building from source
+
+Building from source requires a C compiler and Python development headers.
+On Linux and macOS, a normal `pip install .` automatically installs libheif
+headers and libraries in an isolated build environment. Install runtime libheif
+separately, using the `[libheif]` extra or system packages described above.
+
+To build against system libheif without `libheif-binary`, install libheif
+development headers and its library, plus setuptools and CFFI, then run:
+
+```bash
+pip install --no-build-isolation .
+```
 
 
 ## Changelog
